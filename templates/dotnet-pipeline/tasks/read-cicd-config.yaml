@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: read-cicd-config
+  namespace: pipelines
+spec:
+  workspaces:
+    - name: source
+  results:
+    - name: project
+      type: string
+    - name: app
+      type: string
+  steps:
+    - name: read-cicd-config
+      image: {{ .Values.hub.url }}/{{ .Values.hub.dockerProxy }}/mikefarah/yq
+      script: |
+        # Lê o arquivo .cicd.yaml e remove novas linhas do resultado
+        yq ".project" $(workspaces.source.path)/src/.cicd.yaml | tr -d '\n' > $(results.project.path)
+        yq ".app" $(workspaces.source.path)/src/.cicd.yaml | tr -d '\n' > $(results.app.path)

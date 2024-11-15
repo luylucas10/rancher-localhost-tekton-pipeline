@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dotnet-pipeline-ing
+  namespace: pipelines
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dotnet-pipeline.yourdomain.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: el-dotnet-pipeline-event-listener
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - dotnet-pipeline.yourdomain.com

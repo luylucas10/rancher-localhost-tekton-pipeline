@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: update-app-gitops-config
+  namespace: pipelines
+spec:
+  workspaces:
+    - name: source
+  params:
+    - name: charts_project_url
+      type: string
+    - name: charts_dir
+      type: string
+    - name: tag
+      type: string
+  results:
+    - name: helm_chart_repo_url
+      type: string
+  steps:
+    - name: update-app-gitops-config
+      image: {{ .Values.hub.url }}/ {{ .Values.hub.tektonImagesProject}}/python-gitlab:1.0.2
+      script: |        
+        python /app/update-helmchart-gitlab-project.py \
+          --repo_url "$(params.charts_project_url)" \
+          --user "${USER}" \
+          --token "${TOKEN}" \
+          --charts_dir "$(workspaces.source.path)/$(params.charts_dir)" \
+          --tag $(params.tag)
+      env:
+        - name: "USER"
+          valueFrom:
+            secretKeyRef:
+              name: "gitlab-tekton"
+              key: "username"
+        - name: "TOKEN"
+          valueFrom:
+            secretKeyRef:
+              name: "gitlab-tekton"
+              key: "token"

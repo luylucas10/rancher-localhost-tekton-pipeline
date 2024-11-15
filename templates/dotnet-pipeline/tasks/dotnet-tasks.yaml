@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: dotnet
+  namespace: pipelines
+spec:
+  workspaces:
+    - name: source
+  params:
+    - name: sonarqube_url
+      type: string
+      default: {{ .Values.sonarqube.url }}
+    - name: sonarqube_token
+      type: string
+      default: {{ .Values.sonarqube.token }}
+    - name: sonarqube_project_key
+      type: string
+      default: {{ .Values.sonarqube.projectKey }}
+    - name: sonarqube_quality_gate_wait
+      type: boolean
+      default: {{ .Values.sonarqube.qualityGateWait }}
+  steps:
+    - name: build-test-analyze
+      image: mcr.microsoft.com/dotnet/sdk:8.0
+      workingDir: $(workspaces.source.path)/src
+      script: |
+        dotnet tool install --global dotnet-sonarscanner
+        export PATH="$PATH:/root/.dotnet/tools"
+        dotnet sonarscanner begin /k:"$(params.sonarqube_project_key)" /d:sonar.host.url="$(params.sonarqube_url)"  /d:sonar.token="$(params.sonarqube_token)" /d:sonar.qualitygate.wait=$(params.sonarqube_quality_gate_wait)
+        dotnet build
+        dotnet test
+        dotnet sonarscanner end /d:sonar.token="$(params.sonarqube_token)"

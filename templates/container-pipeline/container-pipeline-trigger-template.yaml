@@ -1,0 +1,32 @@
+# apiVersion: triggers.tekton.dev/v1beta1
+# kind: TriggerTemplate
+# metadata:
+#   name: container-pipeline-trigger-template
+#   namespace: pipelines
+# spec:
+#   params:
+#   - name: git-src-url
+#   resourcetemplates:
+#   - apiVersion: tekton.dev/v1beta1
+#     kind: PipelineRun
+#     metadata:
+#       generateName: container-pipeline-run-
+#     spec:
+#       podTemplate:
+#         securityContext:
+#           fsGroup: 65532 
+#       pipelineRef:
+#         name: container-pipeline
+#       params:
+#         - name: git-src-url
+#           value: $(tt.params.git-src-url)  
+#       workspaces:
+#       - name: main-workspace
+#         volumeClaimTemplate:
+#           spec:
+#             accessModes:
+#               - ReadWriteOnce
+#             resources:
+#               requests:
+#                 storage: 1Gi
+# ---

@@ -1,0 +1,14 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: dotnet-pipeline-event-listener
+  namespace: pipelines
+spec:
+  serviceAccountName: tekton-robot
+  triggers:
+    - name: dotnet-pipeline-trigger
+      bindings:
+      - ref: dotnet-pipeline-trigger-binding
+      template:
+        ref: dotnet-pipeline-trigger-template
+---

@@ -1,0 +1,14 @@
+# apiVersion: triggers.tekton.dev/v1beta1
+# kind: EventListener
+# metadata:
+#   name: container-pipeline-event-listener
+#   namespace: pipelines
+# spec:
+#   serviceAccountName: tekton-robot
+#   triggers:
+#     - name: container-pipeline-trigger
+#       bindings:
+#       - ref: container-pipeline-trigger-binding
+#       template:
+#         ref: container-pipeline-trigger-template
+# ---

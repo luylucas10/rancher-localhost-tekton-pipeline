@@ -1,0 +1,14 @@
+# apiVersion: triggers.tekton.dev/v1beta1
+# kind: TriggerBinding
+# metadata:
+#   name: container-pipeline-trigger-binding
+#   namespace: pipelines
+# spec: 
+#   params:
+#   - name: git-src-url
+#     value: $(body.repository.git_http_url)
+#   - name: git-revision
+#     value: $(body.checkout_sha)
+#   - name: git-commit-url
+#     value: $(body.commits[0].url)
+# ---

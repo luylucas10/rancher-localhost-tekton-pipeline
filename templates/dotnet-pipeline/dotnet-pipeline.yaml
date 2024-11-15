@@ -1,0 +1,157 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: dotnet-pipeline
+  namespace: pipelines
+  labels:
+    app.kubernetes.io/app-type: dotnet
+spec:
+  params:
+    - name: git-src-url
+      type: string
+    - name: git-revision
+      type: string
+    - name: git-commit-url
+      type: string
+  workspaces:
+    - name: main-workspace
+    - name: docker-credentials
+  tasks:
+    - name: git-clone
+      displayName: 'Git Clone'
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: main-workspace
+      params:
+        - name: url
+          value: $(params.git-src-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: subdirectory
+          value: src
+
+
+    - name: dotnet
+      displayName: '.NET Restore, Build, Test and Analyze'
+      taskRef:
+        name: dotnet
+      workspaces:
+        - name: source
+          workspace: main-workspace
+      runAfter:
+        - git-clone
+
+
+    - name: create-app-gitops-config
+      displayName: 'Create App GitOps Config'
+      taskRef:
+        name: create-app-gitops-config
+      workspaces:
+        - name: source
+          workspace: main-workspace
+      params:
+        - name: gitlab_url
+          value: {{ .Values.gitlab.url }}
+        - name: project_gitlab_url
+          value: $(params.git-src-url)
+        - name: model_repo
+          value: {{ .Values.gitlab.model.repo }}
+        - name: namespace
+          value: {{ .Values.gitlab.model.namespace }}
+        - name: tag
+          value: $(params.git-revision)
+        - name: charts_dir
+          value: charts
+      runAfter:
+        - dotnet
+
+
+    - name: read-cicd-config
+      displayName: 'Read CI/CD Config'
+      taskRef:
+        name: read-cicd-config
+      workspaces:
+        - name: source
+          workspace: main-workspace
+      runAfter:
+        - create-app-gitops-config
+
+
+    - name: create-image-tag
+      displayName: 'Create Tag'
+      taskRef:
+        name: create-image-tag
+      runAfter:
+        - read-cicd-config
+
+    # create a inline task to print pipeline results
+    # - name: print-results
+    #   displayName: 'Print Results'
+    #   taskSpec:
+    #     steps:
+    #       - name: print-results
+    #         image: hub.yourdomain.com/docker/alpine:latest
+    #         script: |
+    #           #!/bin/sh
+    #           echo "Project: $(tasks.read-cicd-config.results.project)"
+    #           echo "App: $(tasks.read-cicd-config.results.app)"
+    #           echo "Image Tag: $(tasks.create-image-tag.results.image-tag)"
+    #   runAfter:
+    #     - create-image-tag
+    
+    - name: build-image
+      displayName: 'Build and Push Image'
+      taskRef:
+        name: buildah
+      workspaces:
+        - name: source
+          workspace: main-workspace
+        - name: dockerconfig
+          workspace: docker-credentials
+      params:
+        - name: IMAGE
+          value: {{ .Values.hub.url }}/{{ .Values.hub.project }}/$(tasks.read-cicd-config.results.project)/$(tasks.read-cicd-config.results.app):$(tasks.create-image-tag.results.image-tag)
+        - name: CONTEXT
+          value: $(workspaces.source.path)/src
+      runAfter:
+        - create-image-tag
+
+    - name: update-app-gitops-config
+      displayName: 'Update App GitOps Config'
+      taskRef:
+        name: update-app-gitops-config
+      workspaces:
+        - name: source
+          workspace: main-workspace
+      params:
+        - name: charts_project_url
+          value: $(tasks.create-app-gitops-config.results.helm_chart_repo_url)
+        - name: charts_dir
+          value: charts
+        - name: tag
+          value: $(tasks.create-image-tag.results.image-tag)
+      runAfter:
+        - build-image
+
+    - name: create-argocd-app
+      displayName: 'Create ArgoCD App'
+      taskRef:
+        name: create-argocd-app
+      params:
+        - name: argo_url
+          value: {{ .Values.argo.url }}
+        
+        - name: app_name
+          value: $(tasks.read-cicd-config.results.app)
+        
+        - name: charts_repo_url
+          value: $(tasks.create-app-gitops-config.results.helm_chart_repo_url)
+        
+        
+        - name: dest_namespace
+          value: $(tasks.read-cicd-config.results.project)
+        
+      runAfter:
+        - update-app-gitops-config

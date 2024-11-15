@@ -1,0 +1,19 @@
+gitlab:
+  url: https://gitlab.yourdomain.com
+  model:
+    repo: https://gitlab.yourdomain.com/path/to/model-helm-chart/repo.git
+    namespace: <prefix>
+hub:
+  url: hub.yourdomain.com
+  project: <project>
+  tektonImagesProject: tekton
+  dockerProxy: docker
+
+argo:
+  url: cd.yourdomain.com
+
+sonarqube:
+  url: https://sonarqube.yourdomain.com
+  token: <token>
+  projectKey: <project>
+  qualityGateWait: true

@@ -1,0 +1,42 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: dotnet-pipeline-trigger-template
+  namespace: pipelines
+spec:
+  params:
+  - name: git-src-url
+  - name: git-revision
+  - name: git-commit-url
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: dotnet-pipeline-run-
+    spec:
+      serviceAccountName: tekton-robot
+      podTemplate:
+        securityContext:
+          fsGroup: 65532 
+      pipelineRef:
+        name: dotnet-pipeline
+      params:
+        - name: git-src-url
+          value: $(tt.params.git-src-url)
+        - name: git-revision
+          value: $(tt.params.git-revision)
+        - name: git-commit-url
+          value: $(tt.params.git-commit-url)            
+      workspaces:
+      - name: main-workspace
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+      - name: docker-credentials
+        secret:
+          secretName: harbor-tekton
+---

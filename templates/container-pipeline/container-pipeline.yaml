@@ -1,0 +1,26 @@
+# apiVersion: tekton.dev/v1beta1
+# kind: Pipeline
+# metadata:
+#   name: container-pipeline
+#   namespace: pipelines
+#   labels:
+#     app.kubernetes.io/app-type: dotnet
+# spec:
+#   params:
+#     - name: git-src-url
+#       type: string
+#   workspaces:
+#     - name: main-workspace
+#   tasks:
+#     - name: git-clone
+#       displayName: 'Git Clone'
+#       taskRef:
+#         name: git-clone
+#       workspaces:
+#         - name: output
+#           workspace: main-workspace
+#       params:
+#         - name: url
+#           value: $(params.git-src-url)
+#         - name: revision
+#           value: $(params.git-revision)

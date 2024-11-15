@@ -1,0 +1,47 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-app-gitops-config
+  namespace: pipelines
+spec:
+  workspaces:
+    - name: source
+  params:
+    - name: gitlab_url
+      type: string
+    - name: project_gitlab_url
+      type: string
+    - name: model_repo
+      type: string 
+    - name: namespace
+      type: string
+    - name: charts_dir
+      type: string
+  results:
+    - name: helm_chart_repo_url
+      type: string
+  steps:
+    - name: create-app-gitops-config
+      image: {{ .Values.hub.url }}/{{ .Values.hub.tektonImagesProject }}/python-gitlab:1.0.2
+      script: |        
+        python /app/create-helmchart-gitlab-project.py \
+          --gitlab_url "$(params.gitlab_url)" \
+          --user "${USER}" \
+          --token "${TOKEN}" \
+          --source_project "$(params.project_gitlab_url)" \
+          --source_dir "$(workspaces.source.path)/src" \
+          --model_repo "$(params.model_repo)" \
+          --namespace "$(params.namespace)" \
+          --charts_dir "$(workspaces.source.path)/$(params.charts_dir)" \
+          --tekton_result_repo_url $(results.helm_chart_repo_url.path)
+      env:
+        - name: "USER"
+          valueFrom:
+            secretKeyRef:
+              name: "gitlab-tekton"
+              key: "username"
+        - name: "TOKEN"
+          valueFrom:
+            secretKeyRef:
+              name: "gitlab-tekton"
+              key: "token"

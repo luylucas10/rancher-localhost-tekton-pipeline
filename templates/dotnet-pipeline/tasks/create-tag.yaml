@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-image-tag
+  namespace: pipelines
+spec:
+  results:
+    - name: image-tag
+      description: "Tag de imagem baseada na data e hora no formato YYYY-MM-DD-HH-MM"
+  steps:
+    - name: create-tag
+      image: {{ .Values.hub.url }}/{{ .Values.hub.dockerProxy }}/alpine:latest
+      script: |
+        #!/bin/sh
+        
+        # create a tag with format YYYY-MM-DD-HH-MM
+        IMAGE_TAG=$(date +"%Y-%m-%d-%H-%M")
+        
+        printf "Tag gerada: %s\n" "$IMAGE_TAG"
+        
+        # save tag in task result
+        echo -n "$IMAGE_TAG" > $(results.image-tag.path)

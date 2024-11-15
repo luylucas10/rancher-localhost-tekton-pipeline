@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-argocd-app
+  namespace: pipelines
+spec:
+  params:
+    - name: argo_url
+      type: string
+
+    - name: app_name
+      type: string
+    
+    - name: charts_repo_url
+      type: string
+    
+    - name: path
+      type: string
+      default: "."
+    
+    - name: dest_namespace
+      type: string
+
+  steps:
+    - name: create-argocd-app
+      image: {{ .Values.hub.url }}/{{ .Values.hub.tektonImagesProject }}/argo-cli:1.0.0
+      script: |
+        
+        # Do login on Argo CD
+        argocd login $(params.argo_url) --username ${ARGO_USER} --password ${ARGO_PASSWORD} --grpc-web
+
+        # Create a project for the application
+        argocd proj create $(params.dest_namespace) \
+          --description "Projeto para a aplicação $(params.app_name)" \
+          --dest https://kubernetes.default.svc,$(params.dest_namespace) \
+          --src $(params.charts_repo_url) \
+          --allow-cluster-resource='*/*' \
+          --allow-namespaced-resource='*/*' \
+          --upsert
+
+        # Add the charts repository to the Argo CD
+        argocd repo add $(params.charts_repo_url) \
+          --project $(params.dest_namespace) \
+          --username ${GITLAB_USER} \
+          --password ${GITLAB_PASSWORD} \
+          --upsert
+
+        # Create the application on Argo CD
+        argocd app create $(params.dest_namespace)-$(params.app_name) \
+          --repo $(params.charts_repo_url) \
+          --path $(params.path) \
+          --dest-namespace $(params.dest_namespace) \
+          --dest-server https://kubernetes.default.svc \
+          --project $(params.dest_namespace) \
+          --sync-policy automated \
+          --sync-option CreateNamespace=true \
+          --self-heal \
+          --auto-prune \
+          --upsert
+
+        # Sync the application
+        argocd app sync $(params.dest_namespace)-$(params.app_name)
+      
+      env:
+        - name: "ARGO_USER"
+          valueFrom:
+            secretKeyRef:
+              name: "argo-tekton"
+              key: "username"
+        
+        - name: "ARGO_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: "argo-tekton"
+              key: "password"
+
+        - name: GITLAB_USER
+          valueFrom:
+            secretKeyRef:
+              name: "gitlab-tekton"
+              key: "username"
+
+        - name: GITLAB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "gitlab-tekton"
+              key: "password"
+
